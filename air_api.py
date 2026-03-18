@@ -1,6 +1,6 @@
 import requests
 
-API_KEY = "94b932c578a9b137f23e44a747e6cea2"
+API_KEY = "YOUR_API_KEY_HERE"
 
 def get_pollution(lat, lon):
     url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={API_KEY}"
