@@ -27,7 +27,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- LANGUAGE ----------------
 translations = {
     "English": {
         "title": "Urban Air Quality Health Risk Indicator",
@@ -61,6 +60,24 @@ translations = {
     }
 }
 
+risk_translation = {
+    "English": {
+        "Low": "LOW HEALTH RISK",
+        "Moderate": "MODERATE HEALTH RISK",
+        "High": "HIGH HEALTH RISK"
+    },
+    "Hindi": {
+        "Low": "कम स्वास्थ्य जोखिम",
+        "Moderate": "मध्यम स्वास्थ्य जोखिम",
+        "High": "उच्च स्वास्थ्य जोखिम"
+    },
+    "Odia": {
+        "Low": "କମ୍ ସ୍ୱାସ୍ଥ୍ୟ ଝୁମକ",
+        "Moderate": "ମଧ୍ୟମ ସ୍ୱାସ୍ଥ୍ୟ ଝୁମକ",
+        "High": "ଉଚ୍ଚ ସ୍ୱାସ୍ଥ୍ୟ ଝୁମକ"
+    }
+}
+
 language = st.selectbox(
     "Select Language / भाषा चुनें / ଭାଷା ବାଛନ୍ତୁ",
     ["English", "Hindi", "Odia"]
@@ -72,7 +89,6 @@ st.markdown(f'<div class="header">🌍 {t["title"]}</div>', unsafe_allow_html=Tr
 
 df = pd.read_csv("air_quality_dataset.csv")
 
-# ---------------- CITY COORDS ----------------
 city_coords = {
     "Ahmedabad": (23.0225, 72.5714),
     "Delhi": (28.6139, 77.2090),
@@ -114,77 +130,50 @@ def find_nearest_city(user_lat, user_lon):
             nearest_city = city
     return nearest_city
 
-# ---------------- MODE ----------------
 mode = st.radio(
     t["choose_mode"],
     [t["current"], t["manual"]]
 )
 
-# ---------------- CURRENT LOCATION ----------------
 if mode == t["current"]:
-
     location = get_geolocation()
-
     if location:
         lat = location["coords"]["latitude"]
         lon = location["coords"]["longitude"]
-
         city = find_nearest_city(lat, lon)
-
         st.success(f"📍 Detected City: {city}")
-
         try:
             pm25, pm10, no2, so2, co, o3 = get_pollution(lat, lon)
             st.info("🌐 Using LIVE API Data")
-
         except:
-            st.warning("⚠️ Using dataset fallback")
-
             city_data = df[df["City"] == city].iloc[0]
-
             pm25 = city_data["PM25"]
             pm10 = city_data["PM10"]
             no2 = city_data["NO2"]
             so2 = city_data["SO2"]
             co = city_data["CO"]
             o3 = city_data["O3"]
-
     else:
-        st.warning("Allow location access")
         st.stop()
-
-# ---------------- MANUAL MODE ----------------
 else:
-
     state = st.selectbox(t["state"], sorted(df["State"].unique()))
     state_data = df[df["State"] == state]
-
     city = st.selectbox(t["city"], sorted(state_data["City"].unique()))
-
     if city in city_coords:
         lat, lon = city_coords[city]
-
         try:
             pm25, pm10, no2, so2, co, o3 = get_pollution(lat, lon)
             st.info("🌐 Using LIVE API Data")
-
         except:
-            st.warning("⚠️ API failed, using dataset")
-
             city_data = state_data[state_data["City"] == city].iloc[0]
-
             pm25 = city_data["PM25"]
             pm10 = city_data["PM10"]
             no2 = city_data["NO2"]
             so2 = city_data["SO2"]
             co = city_data["CO"]
             o3 = city_data["O3"]
-
     else:
-        st.warning("City not in coordinate list, using dataset")
-
         city_data = state_data[state_data["City"] == city].iloc[0]
-
         pm25 = city_data["PM25"]
         pm10 = city_data["PM10"]
         no2 = city_data["NO2"]
@@ -192,7 +181,6 @@ else:
         co = city_data["CO"]
         o3 = city_data["O3"]
 
-# ---------------- DISPLAY ----------------
 st.subheader(t["pollution"])
 
 col1, col2, col3 = st.columns(3)
@@ -205,17 +193,17 @@ col4.metric("SO2", so2)
 col5.metric("CO", co)
 col6.metric("O3", o3)
 
-# ---------------- PREDICTION ----------------
 risk, advice = predict_with_advice(pm25, pm10, no2, so2, co, o3)
 
-if risk == "Low":
-    st.markdown("<h1 style='color:green; text-align:center;'>🟢 LOW HEALTH RISK</h1>", unsafe_allow_html=True)
-elif risk == "Moderate":
-    st.markdown("<h1 style='color:orange; text-align:center;'>🟡 MODERATE HEALTH RISK</h1>", unsafe_allow_html=True)
-else:
-    st.markdown("<h1 style='color:red; text-align:center;'>🔴 HIGH HEALTH RISK</h1>", unsafe_allow_html=True)
+risk_text = risk_translation[language][risk]
 
-# ---------------- ADVICE ----------------
+if risk == "Low":
+    st.markdown(f"<h1 style='color:green; text-align:center;'>🟢 {risk_text}</h1>", unsafe_allow_html=True)
+elif risk == "Moderate":
+    st.markdown(f"<h1 style='color:orange; text-align:center;'>🟡 {risk_text}</h1>", unsafe_allow_html=True)
+else:
+    st.markdown(f"<h1 style='color:red; text-align:center;'>🔴 {risk_text}</h1>", unsafe_allow_html=True)
+
 if language == "Hindi":
     if risk == "Low":
         advice = "हवा की गुणवत्ता अच्छी है। बाहरी गतिविधियाँ सुरक्षित हैं।"
@@ -223,7 +211,6 @@ if language == "Hindi":
         advice = "संवेदनशील लोगों को लंबे समय तक बाहर रहने से बचना चाहिए।"
     else:
         advice = "वायु प्रदूषण अधिक है। बाहर जाने से बचें और मास्क पहनें।"
-
 elif language == "Odia":
     if risk == "Low":
         advice = "ବାୟୁ ଗୁଣବତ୍ତା ଭଲ। ବାହାର କାର୍ଯ୍ୟକଳାପ ସୁରକ୍ଷିତ।"
@@ -235,7 +222,6 @@ elif language == "Odia":
 st.subheader(t["advice"])
 st.write(advice)
 
-# ---------------- CHART ----------------
 pollutants = ["PM25","PM10","NO2","SO2","CO","O3"]
 values = [pm25, pm10, no2, so2, co, o3]
 
@@ -243,12 +229,8 @@ fig, ax = plt.subplots(figsize=(8,4))
 ax.bar(pollutants, values)
 ax.set_title("Pollution Levels")
 ax.set_ylabel("Concentration")
-
 st.pyplot(fig)
 
-# ---------------- MAP VISUALIZATION ----------------
-
-# Set color based on risk
 if risk == "Low":
     color = "green"
 elif risk == "Moderate":
@@ -256,22 +238,16 @@ elif risk == "Moderate":
 else:
     color = "red"
 
-# If GPS mode → use real lat/lon
 if mode == t["current"] and location:
     map_lat = lat
     map_lon = lon
-
-# If manual → use city coords
 elif city in city_coords:
     map_lat, map_lon = city_coords[city]
-
 else:
-    map_lat, map_lon = 20.5937, 78.9629  # India center fallback
+    map_lat, map_lon = 20.5937, 78.9629
 
-# Create map
 m = folium.Map(location=[map_lat, map_lon], zoom_start=10)
 
-# Add marker
 folium.CircleMarker(
     location=[map_lat, map_lon],
     radius=10,
@@ -279,7 +255,7 @@ folium.CircleMarker(
     fill=True,
     fill_color=color,
     fill_opacity=0.7,
-    popup=f"{city} - {risk} Risk"
+    popup=f"{city} - {risk_text}"
 ).add_to(m)
 
 st.subheader("📍 Pollution Map")
@@ -289,50 +265,38 @@ st.subheader("🌍 India Pollution Map")
 
 m = folium.Map(location=[22.0, 80.0], zoom_start=5)
 
-def get_color(risk):
-    if risk == "Low":
+def get_color(r):
+    if r == "Low":
         return "green"
-    elif risk == "Moderate":
+    elif r == "Moderate":
         return "orange"
     else:
         return "red"
 
-# ✅ Use only unique cities
 unique_cities = df.groupby("City").mean(numeric_only=True).reset_index()
 
 for index, row in unique_cities.iterrows():
-
     city_name = row["City"]
-
     if city_name in city_coords:
         lat, lon = city_coords[city_name]
+        pm25 = row["PM25"]
+        pm10 = row["PM10"]
+        no2 = row["NO2"]
+        so2 = row["SO2"]
+        co = row["CO"]
+        o3 = row["O3"]
+        risk_temp, _ = predict_with_advice(pm25, pm10, no2, so2, co, o3)
+        color = get_color(risk_temp)
+        folium.CircleMarker(
+            location=[lat, lon],
+            radius=6,
+            color=color,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.6,
+            popup=f"{city_name} - {risk_translation[language][risk_temp]}"
+        ).add_to(m)
 
-        try:
-            pm25 = row["PM25"]
-            pm10 = row["PM10"]
-            no2 = row["NO2"]
-            so2 = row["SO2"]
-            co = row["CO"]
-            o3 = row["O3"]
-
-            risk_temp, _ = predict_with_advice(pm25, pm10, no2, so2, co, o3)
-
-            color = get_color(risk_temp)
-
-            folium.CircleMarker(
-                location=[lat, lon],
-                radius=6,
-                color=color,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.6,
-                popup=f"{city_name} - {risk_temp}"
-            ).add_to(m)
-
-        except:
-            pass
-
-# Highlight selected city
 folium.CircleMarker(
     location=[map_lat, map_lon],
     radius=12,
@@ -340,7 +304,7 @@ folium.CircleMarker(
     fill=True,
     fill_color="blue",
     fill_opacity=0.9,
-    popup=f"Selected: {city} ({risk})"
+    popup=f"{city} ({risk_text})"
 ).add_to(m)
 
 st_folium(m, width=900, height=500)
